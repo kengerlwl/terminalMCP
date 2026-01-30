@@ -58,6 +58,8 @@ def build():
         "--collect-all", "mcp",
         "--collect-all", "rich",
         "--collect-all", "lupa",
+        "--collect-all", "fakeredis",
+        "--collect-all", "docket",
         # Hidden imports
         "--hidden-import", "uvicorn",
         "--hidden-import", "uvicorn.logging",
