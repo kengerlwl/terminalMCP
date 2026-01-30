@@ -1,0 +1,153 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact_name: terminal-mcp-linux-amd64
+            asset_name: terminal-mcp-linux-amd64
+          - os: windows-latest
+            artifact_name: terminal-mcp.exe
+            asset_name: terminal-mcp-windows-amd64.exe
+          - os: macos-latest
+            artifact_name: terminal-mcp-macos-arm64
+            asset_name: terminal-mcp-macos-arm64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install typer
+
+      - name: Build executable (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          python -m PyInstaller --onefile --name terminal-mcp-linux-amd64 --clean --noconfirm \
+            --collect-all fastmcp --collect-all mcp \
+            --hidden-import uvicorn --hidden-import uvicorn.logging \
+            --hidden-import uvicorn.loops --hidden-import uvicorn.loops.auto \
+            --hidden-import uvicorn.protocols --hidden-import uvicorn.protocols.http \
+            --hidden-import uvicorn.protocols.http.auto --hidden-import uvicorn.protocols.websockets \
+            --hidden-import uvicorn.protocols.websockets.auto --hidden-import uvicorn.lifespan \
+            --hidden-import uvicorn.lifespan.on --hidden-import starlette \
+            --hidden-import anyio --hidden-import httpx --hidden-import pydantic \
+            --hidden-import httpcore --hidden-import h11 \
+            main.py
+
+      - name: Build executable (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          python -m PyInstaller --onefile --name terminal-mcp --clean --noconfirm `
+            --collect-all fastmcp --collect-all mcp `
+            --hidden-import uvicorn --hidden-import uvicorn.logging `
+            --hidden-import uvicorn.loops --hidden-import uvicorn.loops.auto `
+            --hidden-import uvicorn.protocols --hidden-import uvicorn.protocols.http `
+            --hidden-import uvicorn.protocols.http.auto --hidden-import uvicorn.protocols.websockets `
+            --hidden-import uvicorn.protocols.websockets.auto --hidden-import uvicorn.lifespan `
+            --hidden-import uvicorn.lifespan.on --hidden-import starlette `
+            --hidden-import anyio --hidden-import httpx --hidden-import pydantic `
+            --hidden-import httpcore --hidden-import h11 `
+            main.py
+
+      - name: Build executable (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          python -m PyInstaller --onefile --name terminal-mcp-macos-arm64 --clean --noconfirm \
+            --collect-all fastmcp --collect-all mcp \
+            --hidden-import uvicorn --hidden-import uvicorn.logging \
+            --hidden-import uvicorn.loops --hidden-import uvicorn.loops.auto \
+            --hidden-import uvicorn.protocols --hidden-import uvicorn.protocols.http \
+            --hidden-import uvicorn.protocols.http.auto --hidden-import uvicorn.protocols.websockets \
+            --hidden-import uvicorn.protocols.websockets.auto --hidden-import uvicorn.lifespan \
+            --hidden-import uvicorn.lifespan.on --hidden-import starlette \
+            --hidden-import anyio --hidden-import httpx --hidden-import pydantic \
+            --hidden-import httpcore --hidden-import h11 \
+            main.py
+
+      - name: Rename Windows artifact
+        if: matrix.os == 'windows-latest'
+        run: |
+          Move-Item dist/terminal-mcp.exe dist/terminal-mcp-windows-amd64.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: dist/${{ matrix.asset_name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Get version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.VERSION }}
+          name: TerminalMCP ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## TerminalMCP ${{ steps.get_version.outputs.VERSION }}
+
+            终端 MCP Server + FRP 代理工具
+
+            ### 下载
+            - **Linux**: `terminal-mcp-linux-amd64`
+            - **Windows**: `terminal-mcp-windows-amd64.exe`
+            - **macOS (Apple Silicon)**: `terminal-mcp-macos-arm64`
+
+            ### 使用方法
+            ```bash
+            ./terminal-mcp-linux-amd64 --server <FRP服务器IP> --token <TOKEN> --remote-port <端口>
+            ```
+          files: |
+            artifacts/terminal-mcp-linux-amd64/terminal-mcp-linux-amd64
+            artifacts/terminal-mcp-windows-amd64.exe/terminal-mcp-windows-amd64.exe
+            artifacts/terminal-mcp-macos-arm64/terminal-mcp-macos-arm64
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

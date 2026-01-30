@@ -1,0 +1,20 @@
+# Build
+build/
+dist/
+*.spec
+
+# IDE
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+*.egg
+
+# Env
+.env
+.venv/
+venv/
+
