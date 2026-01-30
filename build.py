@@ -56,6 +56,7 @@ def build():
         # 收集完整包 (包含 metadata)
         "--collect-all", "fastmcp",
         "--collect-all", "mcp",
+        "--collect-all", "rich",
         # Hidden imports
         "--hidden-import", "uvicorn",
         "--hidden-import", "uvicorn.logging",
