@@ -57,6 +57,7 @@ def build():
         "--collect-all", "fastmcp",
         "--collect-all", "mcp",
         "--collect-all", "rich",
+        "--collect-all", "lupa",
         # Hidden imports
         "--hidden-import", "uvicorn",
         "--hidden-import", "uvicorn.logging",
