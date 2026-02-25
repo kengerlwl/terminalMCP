@@ -1,3 +1,4 @@
+import base64
 import os
 import platform
 import shlex
@@ -168,6 +169,125 @@ def read_file(file_path: str, max_lines: Optional[int] = None) -> Dict[str, str]
                 "status": "success",
                 "content": content
             }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+
+UPLOAD_FILE_DESC = f"""上传文件到远程主机
+
+【系统环境】{SYSTEM_INFO['os']} @ {SYSTEM_INFO['hostname']}
+
+【功能说明】
+将 base64 编码的文件内容写入到指定路径。支持文本文件和二进制文件。
+
+Args:
+    file_path: 目标文件路径（绝对路径或相对路径）
+    content: base64 编码的文件内容
+    overwrite: 是否覆盖已存在的文件（默认 False）
+
+Returns:
+    包含上传状态和文件信息的字典
+"""
+
+
+@mcp.tool(description=UPLOAD_FILE_DESC)
+def upload_file(file_path: str, content: str, overwrite: bool = False) -> Dict[str, Union[str, int]]:
+    try:
+        # 检查文件是否存在
+        if os.path.exists(file_path) and not overwrite:
+            return {
+                "status": "error",
+                "error": f"File already exists: {file_path}. Set overwrite=True to replace it."
+            }
+
+        # 解码 base64 内容
+        try:
+            file_content = base64.b64decode(content)
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": f"Invalid base64 content: {str(e)}"
+            }
+
+        # 确保目标目录存在
+        dir_path = os.path.dirname(file_path)
+        if dir_path and not os.path.exists(dir_path):
+            os.makedirs(dir_path, exist_ok=True)
+
+        # 写入文件
+        with open(file_path, 'wb') as f:
+            f.write(file_content)
+
+        # 获取文件信息
+        file_size = os.path.getsize(file_path)
+        abs_path = os.path.abspath(file_path)
+
+        return {
+            "status": "success",
+            "message": "File uploaded successfully",
+            "file_path": abs_path,
+            "file_size": file_size
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+
+DOWNLOAD_FILE_DESC = f"""从远程主机下载文件
+
+【系统环境】{SYSTEM_INFO['os']} @ {SYSTEM_INFO['hostname']}
+
+【功能说明】
+读取文件内容并返回 base64 编码。支持文本文件和二进制文件。
+
+Args:
+    file_path: 要下载的文件路径（绝对路径或相对路径）
+
+Returns:
+    包含 base64 编码的文件内容和元信息的字典
+"""
+
+
+@mcp.tool(description=DOWNLOAD_FILE_DESC)
+def download_file(file_path: str) -> Dict[str, Union[str, int]]:
+    try:
+        # 检查文件是否存在
+        if not os.path.exists(file_path):
+            return {
+                "status": "error",
+                "error": f"File not found: {file_path}"
+            }
+
+        # 检查是否为文件（不是目录）
+        if not os.path.isfile(file_path):
+            return {
+                "status": "error",
+                "error": f"Path is not a file: {file_path}"
+            }
+
+        # 读取文件内容
+        with open(file_path, 'rb') as f:
+            file_content = f.read()
+
+        # 编码为 base64
+        content_base64 = base64.b64encode(file_content).decode('utf-8')
+
+        # 获取文件信息
+        file_size = os.path.getsize(file_path)
+        abs_path = os.path.abspath(file_path)
+
+        return {
+            "status": "success",
+            "message": "File downloaded successfully",
+            "file_path": abs_path,
+            "file_size": file_size,
+            "content": content_base64
+        }
     except Exception as e:
         return {
             "status": "error",
