@@ -32,8 +32,6 @@ USAGE_GUIDE = """
   - run_terminal    : 执行终端命令
   - list_files      : 列出目录文件
   - read_file       : 读取文件内容
-  - upload_file     : 上传文件到远程主机
-  - download_file   : 从远程主机下载文件
 
 【配置 AI 助手】
   在 Claude Desktop 或其他 MCP 客户端配置:
